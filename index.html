@@ -31,7 +31,7 @@
       object-fit: contain;
     }
     .afiyet-baslik {
-      font-size: 26px;
+      font-size: 28px;
       font-weight: 800;
       color: #d93025;
       letter-spacing: 1px;
@@ -40,12 +40,23 @@
     .lokasyon-yazi { 
       color: #1a73e8; 
       margin-top: 0; 
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       font-size: 18px; 
       font-weight: 600;
       background: #e8f0fe;
-      padding: 8px 12px;
+      padding: 8px 14px;
       border-radius: 8px;
+      display: inline-block;
+    }
+    .tarih-kutu {
+      font-size: 15px;
+      font-weight: 600;
+      color: #3c4043;
+      background: #f8f9fa;
+      border: 1px solid #dadce0;
+      padding: 6px 12px;
+      border-radius: 6px;
+      margin: 8px auto 15px auto;
       display: inline-block;
     }
     p { color: #555; font-size: 15px; margin: 10px 0; }
@@ -90,7 +101,7 @@
       border-radius: 10px; 
     }
     .danger { 
-      font-size: 18px; 
+      font-size: 17px; 
       font-weight: bold; 
       color: #c5221f; 
       margin-top: 15px; 
@@ -100,9 +111,10 @@
       border-radius: 10px; 
     }
     .kapanis-not {
-      font-size: 13px;
-      color: #666;
-      margin-top: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #5f6368;
+      margin-top: 14px;
     }
     .reset { 
       margin-top: 25px; 
@@ -120,6 +132,7 @@
     
     <div class="afiyet-baslik">AFİYET OLSUN</div>
     <div><span class="lokasyon-yazi" id="lokasyonBaslik">Yükleniyor...</span></div>
+    <div><span class="tarih-kutu" id="tarihSaatAlani"></span></div>
 
     <div id="ilkKurulum" style="display:none;">
       <p>İlk kullanım için tanımlı telefon numaranızı girin:</p>
@@ -143,7 +156,14 @@
     const lokasyonAdi = urlParams.get("lokasyon") || "Genel_Lokasyon";
     document.getElementById("lokasyonBaslik").innerText = lokasyonAdi.replace(/_/g, " ");
 
-    // Bu tarayıcıya özel benzersiz Cihaz Kimliği oluştur veya mevcut olanı getir
+    // Anlık tarih ve saati ekrana yazdır
+    function anlikTarihYaz() {
+      const simdi = new Date();
+      const formatli = simdi.toLocaleDateString("tr-TR") + " " + simdi.toLocaleTimeString("tr-TR");
+      document.getElementById("tarihSaatAlani").innerText = "📅 " + formatli;
+    }
+    anlikTarihYaz();
+
     function cihazKimligiGetir() {
       let cid = localStorage.getItem("personel_cihaz_id");
       if (!cid) {
@@ -205,29 +225,27 @@
       window[callbackAdi] = function(data) {
         clearTimeout(zamanAsimi);
 
+        if (data.tarih) {
+          document.getElementById("tarihSaatAlani").innerText = "📅 " + data.tarih;
+        }
+
         if (data.durum === "OK") {
-          // Sadece yetkili ve onaylı numarayı cihaz hafızasına kaydet
           localStorage.setItem("personel_sabit_tel", telefon);
           sessionStorage.setItem("oturum_tamamlandi", "evet");
-          ekraniKilitle("✓ " + data.mesaj, "Sayfa kapatılıyor...");
-          
-          setTimeout(function() {
-            window.close();
-            document.getElementById("kapanisBilgi").innerText = "İşlem tamamlandı. Bu pencereyi kapatabilirsiniz.";
-          }, 1500);
+          ekraniKilitle("✓ " + data.mesaj, "");
+          onSaniyeGeriSayimVeKapat();
         } 
         else if (data.durum === "YETKISIZ") {
-          // Yetkisiz numara veya başka cihazda kayıtlı numara ise hafızadan sil
           localStorage.removeItem("personel_sabit_tel");
           mesajKutusu.className = "danger";
           mesajKutusu.innerText = "⛔ " + data.mesaj;
-          document.getElementById("kapanisBilgi").innerText = "Yetkiniz olduğunu düşünüyorsanız yöneticinize başvurun.";
+          document.getElementById("kapanisBilgi").innerText = "Yetkisiz veya farklı cihaz girişi engellendi.";
         } 
         else {
           sessionStorage.setItem("oturum_tamamlandi", "evet");
           mesajKutusu.className = "warning";
           mesajKutusu.innerText = "⚠ " + data.mesaj;
-          document.getElementById("kapanisBilgi").innerText = "Bu sayfayı kapatabilirsiniz.";
+          onSaniyeGeriSayimVeKapat();
         }
 
         delete window[callbackAdi];
@@ -242,6 +260,28 @@
         mesajKutusu.innerText = "Bağlantı hatası! Google Script linkini kontrol edin.";
       };
       document.body.appendChild(script);
+    }
+
+    // 10 saniye geri sayım yapar ve ardından sekmeyi kapatır
+    function onSaniyeGeriSayimVeKapat() {
+      let kalan = 10;
+      const kapanisAlani = document.getElementById("kapanisBilgi");
+      kapanisAlani.innerText = "Sayfa " + kalan + " saniye içinde otomatik kapanacak...";
+
+      const sayac = setInterval(function() {
+        kalan--;
+        if (kalan > 0) {
+          kapanisAlani.innerText = "Sayfa " + kalan + " saniye içinde otomatik kapanacak...";
+        } else {
+          clearInterval(sayac);
+          kapanisAlani.innerText = "İşlem tamamlandı. Sekme kapatılıyor...";
+          window.close();
+          // Mobil tarayıcı güvenlik gereği sekmeyi kapatmaya izin vermezse ekranı temizle
+          setTimeout(function() {
+            document.body.innerHTML = "<div style='font-family:sans-serif;text-align:center;padding:50px;'><h2>✓ İşleminiz Tamamlandı</h2><p>Bu sekmeyi kapatabilirsiniz.</p></div>";
+          }, 500);
+        }
+      }, 1000);
     }
 
     function ekraniKilitle(anaMesaj, altNot) {
