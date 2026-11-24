@@ -36,7 +36,7 @@
 
   <script>
     // BURAYA KENDİ GOOGLE APPS SCRIPT LİNKİNİZİ YAPIŞTIRIN:
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx8oP1P1vM5lj7sAjGsVb8SdadMPTFAHTFRxgBXyw_RlM6LjlVnqg7v7bYLGgj4iYpCLQ/exec";
+    const SCRIPT_URL = "SCRIPT_URL_BURAYA";
 
     const urlParams = new URLSearchParams(window.location.search);
     const lokasyonAdi = urlParams.get("lokasyon") || "Genel_Lokasyon";
@@ -69,25 +69,37 @@
       veriyiGonder(standartTel);
     }
 
+    // CORS engelini aşan JSONP gönderim fonksiyonu
     function veriyiGonder(telefon) {
       const mesajKutusu = document.getElementById("durumMesaji");
-      const istekUrl = `${SCRIPT_URL}?lokasyon=${encodeURIComponent(lokasyonAdi)}&telefon=${encodeURIComponent(telefon)}`;
+      const callbackAdi = "jsonpCallback_" + Math.floor(Math.random() * 1000000);
+      
+      const zamanAsimi = setTimeout(function() {
+        mesajKutusu.className = "warning";
+        mesajKutusu.innerText = "Sunucu yanıt vermedi. Lütfen Google Apps Script erişim ayarını 'Herkes' yapıp tekrar deneyin.";
+      }, 10000);
 
-      fetch(istekUrl)
-        .then(response => response.json())
-        .then(data => {
-          if (data.durum === "OK") {
-            mesajKutusu.className = "status";
-            mesajKutusu.innerText = "✓ " + data.mesaj;
-          } else {
-            mesajKutusu.className = "warning";
-            mesajKutusu.innerText = "⚠ " + data.mesaj;
-          }
-        })
-        .catch(() => {
+      window[callbackAdi] = function(data) {
+        clearTimeout(zamanAsimi);
+        if (data.durum === "OK") {
+          mesajKutusu.className = "status";
+          mesajKutusu.innerText = "✓ " + data.mesaj;
+        } else {
           mesajKutusu.className = "warning";
-          mesajKutusu.innerText = "Bağlantı hatası! İnternetinizi kontrol edip sayfayı yenileyin.";
-        });
+          mesajKutusu.innerText = "⚠ " + data.mesaj;
+        }
+        delete window[callbackAdi];
+        document.body.removeChild(script);
+      };
+
+      const script = document.createElement("script");
+      script.src = `${SCRIPT_URL}?lokasyon=${encodeURIComponent(lokasyonAdi)}&telefon=${encodeURIComponent(telefon)}&callback=${callbackAdi}`;
+      script.onerror = function() {
+        clearTimeout(zamanAsimi);
+        mesajKutusu.className = "warning";
+        mesajKutusu.innerText = "Bağlantı hatası! Google Script linkini kontrol edin.";
+      };
+      document.body.appendChild(script);
     }
 
     function numaraSifirla() {
