@@ -89,6 +89,16 @@
       background: #fef7e0; 
       border-radius: 10px; 
     }
+    .danger { 
+      font-size: 18px; 
+      font-weight: bold; 
+      color: #c5221f; 
+      margin-top: 15px; 
+      padding: 16px; 
+      background: #fce8e6; 
+      border: 1px solid #f6aea9;
+      border-radius: 10px; 
+    }
     .kapanis-not {
       font-size: 13px;
       color: #666;
@@ -106,37 +116,43 @@
 </head>
 <body>
   <div class="card">
-    <!-- LOGO ALANI: Aşağıdaki src içine logo resminizin linkini koyun -->
-    <img id="sirketLogo" class="logo" src="EG LOGO2.png" />
+    <img id="sirketLogo" class="logo" src="EG logo.png" alt="Logo" onerror="this.style.display='none'" />
     
     <div class="afiyet-baslik">AFİYET OLSUN</div>
     <div><span class="lokasyon-yazi" id="lokasyonBaslik">Yükleniyor...</span></div>
 
-    <!-- İLK KEZ GİRİŞ EKRANI -->
     <div id="ilkKurulum" style="display:none;">
-      <p>İlk kullanım için telefon numaranızı bir kez kaydedin:</p>
+      <p>İlk kullanım için tanımlı telefon numaranızı girin:</p>
       <input type="tel" id="telInput" placeholder="05XX XXX XX XX" inputmode="numeric" />
       <button onclick="kaydetVeGonder()">Kaydet ve Gönder</button>
     </div>
 
-    <!-- OTOMATİK GÖNDERİM EKRANI -->
     <div id="otomatikEkran" style="display:none;">
       <p id="kayitliTelBilgi"></p>
-      <div class="status" id="durumMesaji">Kayıt gönderiliyor...</div>
+      <div class="status" id="durumMesaji">Yetki kontrol ediliyor...</div>
       <div class="kapanis-not" id="kapanisBilgi"></div>
-      <span class="reset" onclick="numaraSifirla()">Numaramı Değiştir</span>
+      <span class="reset" onclick="numaraSifirla()">Farklı Numara Gir</span>
     </div>
   </div>
 
   <script>
-    // 1. GOOGLE APPS SCRIPT LİNKİNİZİ BURAYA YAPIŞTIRIN:
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx8oP1P1vM5lj7sAjGsVb8SdadMPTFAHTFRxgBXyw_RlM6LjlVnqg7v7bYLGgj4iYpCLQ/exec";
+    // GOOGLE APPS SCRIPT LİNKİNİZİ BURAYA YAPIŞTIRIN:
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUNnt9EevY6YVmt2lDlcMvLIox0pOK5wkbIPa6sEQMv1dOIsgtSjbdFfvZeAuII0KuoA/exec";
 
     const urlParams = new URLSearchParams(window.location.search);
     const lokasyonAdi = urlParams.get("lokasyon") || "Genel_Lokasyon";
     document.getElementById("lokasyonBaslik").innerText = lokasyonAdi.replace(/_/g, " ");
 
-    // Sayfa yenileme (F5 / Reload) kontrolü: Aynı oturumda tekrar gönderimi engeller
+    // Bu tarayıcıya özel benzersiz Cihaz Kimliği oluştur veya mevcut olanı getir
+    function cihazKimligiGetir() {
+      let cid = localStorage.getItem("personel_cihaz_id");
+      if (!cid) {
+        cid = "DEV-" + Date.now() + "-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+        localStorage.setItem("personel_cihaz_id", cid);
+      }
+      return cid;
+    }
+
     const sayfaYenilendiMi = (
       (window.performance && window.performance.navigation && window.performance.navigation.type === 1) ||
       (window.performance && window.performance.getEntriesByType("navigation")[0]?.type === "reload")
@@ -144,18 +160,18 @@
 
     window.onload = function() {
       const kayitliTel = localStorage.getItem("personel_sabit_tel");
+      const cihazId = cihazKimligiGetir();
       
       if (kayitliTel) {
         document.getElementById("otomatikEkran").style.display = "block";
         document.getElementById("kayitliTelBilgi").innerText = "Personel: " + kayitliTel;
 
-        // Eğer kullanıcı tarayıcıda sayfayı yenilediyse tekrar gönderim yapma
         if (sayfaYenilendiMi || sessionStorage.getItem("oturum_tamamlandi") === "evet") {
           ekraniKilitle("✓ İşleminiz az önce tamamlandı.", "Bu sayfayı kapatabilirsiniz.");
           return;
         }
 
-        veriyiGonder(kayitliTel);
+        veriyiGonder(kayitliTel, cihazId);
       } else {
         document.getElementById("ilkKurulum").style.display = "block";
       }
@@ -169,15 +185,15 @@
         return;
       }
       const standartTel = "0" + sadeceRakam.slice(-10);
-      localStorage.setItem("personel_sabit_tel", standartTel);
+      const cihazId = cihazKimligiGetir();
       
       document.getElementById("ilkKurulum").style.display = "none";
       document.getElementById("otomatikEkran").style.display = "block";
       document.getElementById("kayitliTelBilgi").innerText = "Personel: " + standartTel;
-      veriyiGonder(standartTel);
+      veriyiGonder(standartTel, cihazId);
     }
 
-    function veriyiGonder(telefon) {
+    function veriyiGonder(telefon, cihazId) {
       const mesajKutusu = document.getElementById("durumMesaji");
       const callbackAdi = "jsonpCallback_" + Math.floor(Math.random() * 1000000);
       
@@ -188,30 +204,38 @@
 
       window[callbackAdi] = function(data) {
         clearTimeout(zamanAsimi);
-        // Gönderim tamamlandığı için bu sekmeyi kilitle
-        sessionStorage.setItem("oturum_tamamlandi", "evet");
 
         if (data.durum === "OK") {
+          // Sadece yetkili ve onaylı numarayı cihaz hafızasına kaydet
+          localStorage.setItem("personel_sabit_tel", telefon);
+          sessionStorage.setItem("oturum_tamamlandi", "evet");
           ekraniKilitle("✓ " + data.mesaj, "Sayfa kapatılıyor...");
-        } else {
+          
+          setTimeout(function() {
+            window.close();
+            document.getElementById("kapanisBilgi").innerText = "İşlem tamamlandı. Bu pencereyi kapatabilirsiniz.";
+          }, 1500);
+        } 
+        else if (data.durum === "YETKISIZ") {
+          // Yetkisiz numara veya başka cihazda kayıtlı numara ise hafızadan sil
+          localStorage.removeItem("personel_sabit_tel");
+          mesajKutusu.className = "danger";
+          mesajKutusu.innerText = "⛔ " + data.mesaj;
+          document.getElementById("kapanisBilgi").innerText = "Yetkiniz olduğunu düşünüyorsanız yöneticinize başvurun.";
+        } 
+        else {
+          sessionStorage.setItem("oturum_tamamlandi", "evet");
           mesajKutusu.className = "warning";
           mesajKutusu.innerText = "⚠ " + data.mesaj;
           document.getElementById("kapanisBilgi").innerText = "Bu sayfayı kapatabilirsiniz.";
         }
-
-        // 1.5 saniye sonra sekmeyi kapatmayı dene
-        setTimeout(function() {
-          window.close();
-          // Tarayıcı güvenlik gereği sekmeyi kapatmazsa bilgilendirme yazısını güncelle
-          document.getElementById("kapanisBilgi").innerText = "İşlem tamamlandı. Bu pencereyi güvenle kapatabilirsiniz.";
-        }, 1500);
 
         delete window[callbackAdi];
         document.body.removeChild(script);
       };
 
       const script = document.createElement("script");
-      script.src = `${SCRIPT_URL}?lokasyon=${encodeURIComponent(lokasyonAdi)}&telefon=${encodeURIComponent(telefon)}&callback=${callbackAdi}`;
+      script.src = `${SCRIPT_URL}?lokasyon=${encodeURIComponent(lokasyonAdi)}&telefon=${encodeURIComponent(telefon)}&cihazId=${encodeURIComponent(cihazId)}&callback=${callbackAdi}`;
       script.onerror = function() {
         clearTimeout(zamanAsimi);
         mesajKutusu.className = "warning";
