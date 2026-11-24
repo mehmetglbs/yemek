@@ -3,50 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lokasyon Yoklama</title>
+  <title>Afiyet Olsun - Lokasyon Yoklama</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; padding: 25px; background: #f0f2f5; margin: 0; }
-    .card { background: white; max-width: 400px; margin: 30px auto; padding: 30px 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-    h2 { color: #1a73e8; margin-top: 0; font-size: 22px; }
-    p { color: #555; font-size: 15px; }
-    input { width: 85%; padding: 14px; margin: 15px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 18px; text-align: center; outline: none; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      text-align: center; 
+      padding: 20px; 
+      background: #f0f2f5; 
+      margin: 0; 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 90vh;
+    }
+    .card { 
+      background: white; 
+      width: 100%;
+      max-width: 400px; 
+      padding: 30px 20px; 
+      border-radius: 18px; 
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08); 
+    }
+    .logo {
+      max-width: 130px;
+      max-height: 80px;
+      margin-bottom: 12px;
+      object-fit: contain;
+    }
+    .afiyet-baslik {
+      font-size: 26px;
+      font-weight: 800;
+      color: #d93025;
+      letter-spacing: 1px;
+      margin: 5px 0 8px 0;
+    }
+    .lokasyon-yazi { 
+      color: #1a73e8; 
+      margin-top: 0; 
+      margin-bottom: 20px;
+      font-size: 18px; 
+      font-weight: 600;
+      background: #e8f0fe;
+      padding: 8px 12px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    p { color: #555; font-size: 15px; margin: 10px 0; }
+    input { 
+      width: 85%; 
+      padding: 14px; 
+      margin: 12px 0; 
+      border: 2px solid #ddd; 
+      border-radius: 10px; 
+      font-size: 18px; 
+      text-align: center; 
+      outline: none; 
+    }
     input:focus { border-color: #1a73e8; }
-    button { background: #1a73e8; color: white; border: none; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer; width: 92%; }
-    .status { font-size: 18px; font-weight: bold; color: #0f9d58; margin-top: 20px; padding: 12px; background: #e6f4ea; border-radius: 8px; }
-    .warning { font-size: 16px; font-weight: bold; color: #b06000; margin-top: 20px; padding: 12px; background: #fef7e0; border-radius: 8px; }
-    .reset { margin-top: 25px; font-size: 13px; color: #888; text-decoration: underline; cursor: pointer; display: inline-block; }
+    button { 
+      background: #1a73e8; 
+      color: white; 
+      border: none; 
+      padding: 15px; 
+      font-size: 16px; 
+      font-weight: bold; 
+      border-radius: 10px; 
+      cursor: pointer; 
+      width: 92%; 
+    }
+    .status { 
+      font-size: 18px; 
+      font-weight: bold; 
+      color: #0f9d58; 
+      margin-top: 15px; 
+      padding: 15px; 
+      background: #e6f4ea; 
+      border-radius: 10px; 
+    }
+    .warning { 
+      font-size: 16px; 
+      font-weight: bold; 
+      color: #b06000; 
+      margin-top: 15px; 
+      padding: 15px; 
+      background: #fef7e0; 
+      border-radius: 10px; 
+    }
+    .kapanis-not {
+      font-size: 13px;
+      color: #666;
+      margin-top: 10px;
+    }
+    .reset { 
+      margin-top: 25px; 
+      font-size: 12px; 
+      color: #999; 
+      text-decoration: underline; 
+      cursor: pointer; 
+      display: inline-block; 
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2 id="lokasyonBaslik">Yükleniyor...</h2>
+    <!-- LOGO ALANI: Aşağıdaki src içine logo resminizin linkini koyun -->
+    <img id="sirketLogo" class="logo" src="https://eghp.ttr.tr/images/uploads/F1446/hakkimizda-R-6503fdd4-cc07-4c6a-a608-a0263a2b04ff.webp" alt="Logo" onerror="this.style.display='none'" />
+    
+    <div class="afiyet-baslik">AFİYET OLSUN</div>
+    <div><span class="lokasyon-yazi" id="lokasyonBaslik">Yükleniyor...</span></div>
 
+    <!-- İLK KEZ GİRİŞ EKRANI -->
     <div id="ilkKurulum" style="display:none;">
       <p>İlk kullanım için telefon numaranızı bir kez kaydedin:</p>
       <input type="tel" id="telInput" placeholder="05XX XXX XX XX" inputmode="numeric" />
-      <button onclick="kaydetVeGonder()">Kaydet ve Giriş Yap</button>
+      <button onclick="kaydetVeGonder()">Kaydet ve Gönder</button>
     </div>
 
+    <!-- OTOMATİK GÖNDERİM EKRANI -->
     <div id="otomatikEkran" style="display:none;">
       <p id="kayitliTelBilgi"></p>
       <div class="status" id="durumMesaji">Kayıt gönderiliyor...</div>
+      <div class="kapanis-not" id="kapanisBilgi"></div>
       <span class="reset" onclick="numaraSifirla()">Numaramı Değiştir</span>
     </div>
   </div>
 
   <script>
-    // BURAYA KENDİ GOOGLE APPS SCRIPT LİNKİNİZİ YAPIŞTIRIN:
+    // 1. GOOGLE APPS SCRIPT LİNKİNİZİ BURAYA YAPIŞTIRIN:
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx8oP1P1vM5lj7sAjGsVb8SdadMPTFAHTFRxgBXyw_RlM6LjlVnqg7v7bYLGgj4iYpCLQ/exec";
 
     const urlParams = new URLSearchParams(window.location.search);
     const lokasyonAdi = urlParams.get("lokasyon") || "Genel_Lokasyon";
-    document.getElementById("lokasyonBaslik").innerText = "Lokasyon: " + lokasyonAdi.replace(/_/g, " ");
+    document.getElementById("lokasyonBaslik").innerText = lokasyonAdi.replace(/_/g, " ");
+
+    // Sayfa yenileme (F5 / Reload) kontrolü: Aynı oturumda tekrar gönderimi engeller
+    const sayfaYenilendiMi = (
+      (window.performance && window.performance.navigation && window.performance.navigation.type === 1) ||
+      (window.performance && window.performance.getEntriesByType("navigation")[0]?.type === "reload")
+    );
 
     window.onload = function() {
       const kayitliTel = localStorage.getItem("personel_sabit_tel");
+      
       if (kayitliTel) {
         document.getElementById("otomatikEkran").style.display = "block";
         document.getElementById("kayitliTelBilgi").innerText = "Personel: " + kayitliTel;
+
+        // Eğer kullanıcı tarayıcıda sayfayı yenilediyse tekrar gönderim yapma
+        if (sayfaYenilendiMi || sessionStorage.getItem("oturum_tamamlandi") === "evet") {
+          ekraniKilitle("✓ İşleminiz az önce tamamlandı.", "Bu sayfayı kapatabilirsiniz.");
+          return;
+        }
+
         veriyiGonder(kayitliTel);
       } else {
         document.getElementById("ilkKurulum").style.display = "block";
@@ -69,25 +177,35 @@
       veriyiGonder(standartTel);
     }
 
-    // CORS engelini aşan JSONP gönderim fonksiyonu
     function veriyiGonder(telefon) {
       const mesajKutusu = document.getElementById("durumMesaji");
       const callbackAdi = "jsonpCallback_" + Math.floor(Math.random() * 1000000);
       
       const zamanAsimi = setTimeout(function() {
         mesajKutusu.className = "warning";
-        mesajKutusu.innerText = "Sunucu yanıt vermedi. Lütfen Google Apps Script erişim ayarını 'Herkes' yapıp tekrar deneyin.";
+        mesajKutusu.innerText = "Sunucu yanıt vermedi. İnternetinizi kontrol edin.";
       }, 10000);
 
       window[callbackAdi] = function(data) {
         clearTimeout(zamanAsimi);
+        // Gönderim tamamlandığı için bu sekmeyi kilitle
+        sessionStorage.setItem("oturum_tamamlandi", "evet");
+
         if (data.durum === "OK") {
-          mesajKutusu.className = "status";
-          mesajKutusu.innerText = "✓ " + data.mesaj;
+          ekraniKilitle("✓ " + data.mesaj, "Sayfa kapatılıyor...");
         } else {
           mesajKutusu.className = "warning";
           mesajKutusu.innerText = "⚠ " + data.mesaj;
+          document.getElementById("kapanisBilgi").innerText = "Bu sayfayı kapatabilirsiniz.";
         }
+
+        // 1.5 saniye sonra sekmeyi kapatmayı dene
+        setTimeout(function() {
+          window.close();
+          // Tarayıcı güvenlik gereği sekmeyi kapatmazsa bilgilendirme yazısını güncelle
+          document.getElementById("kapanisBilgi").innerText = "İşlem tamamlandı. Bu pencereyi güvenle kapatabilirsiniz.";
+        }, 1500);
+
         delete window[callbackAdi];
         document.body.removeChild(script);
       };
@@ -102,8 +220,16 @@
       document.body.appendChild(script);
     }
 
+    function ekraniKilitle(anaMesaj, altNot) {
+      const mesajKutusu = document.getElementById("durumMesaji");
+      mesajKutusu.className = "status";
+      mesajKutusu.innerText = anaMesaj;
+      document.getElementById("kapanisBilgi").innerText = altNot;
+    }
+
     function numaraSifirla() {
       localStorage.removeItem("personel_sabit_tel");
+      sessionStorage.removeItem("oturum_tamamlandi");
       location.reload();
     }
   </script>
