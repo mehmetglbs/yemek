@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Afiyet Olsun - Lokasyon Yoklama</title>
+  <title>Afiyet Olsun - Yemek İzin Fişi</title>
   <style>
     body { 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
@@ -40,7 +40,7 @@
     .lokasyon-yazi { 
       color: #1a73e8; 
       margin-top: 0; 
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       font-size: 18px; 
       font-weight: 600;
       background: #e8f0fe;
@@ -56,10 +56,16 @@
       border: 1px solid #dadce0;
       padding: 6px 12px;
       border-radius: 6px;
-      margin: 8px auto 15px auto;
+      margin: 6px auto 12px auto;
       display: inline-block;
     }
-    p { color: #555; font-size: 15px; margin: 10px 0; }
+    .personel-ad {
+      font-size: 19px;
+      font-weight: 700;
+      color: #202124;
+      margin: 8px 0 2px 0;
+    }
+    p { color: #555; font-size: 14px; margin: 4px 0 10px 0; }
     input { 
       width: 85%; 
       padding: 14px; 
@@ -81,6 +87,12 @@
       border-radius: 10px; 
       cursor: pointer; 
       width: 92%; 
+    }
+    .btn-indir {
+      background: #0f9d58;
+      margin-top: 12px;
+      font-size: 15px;
+      padding: 12px;
     }
     .status { 
       font-size: 18px; 
@@ -117,7 +129,7 @@
       margin-top: 14px;
     }
     .reset { 
-      margin-top: 25px; 
+      margin-top: 22px; 
       font-size: 12px; 
       color: #999; 
       text-decoration: underline; 
@@ -128,7 +140,7 @@
 </head>
 <body>
   <div class="card">
-    <img id="sirketLogo" class="logo" src="EG LOGO2.png" alt="Logo" onerror="this.style.display='none'" />
+    <img id="sirketLogo" class="logo" src="EG LOGO.png" alt="Logo" onerror="this.style.display='none'" />
     
     <div class="afiyet-baslik">AFİYET OLSUN</div>
     <div><span class="lokasyon-yazi" id="lokasyonBaslik">Yükleniyor...</span></div>
@@ -141,12 +153,17 @@
     </div>
 
     <div id="otomatikEkran" style="display:none;">
+      <div class="personel-ad" id="kayitliAdBilgi"></div>
       <p id="kayitliTelBilgi"></p>
       <div class="status" id="durumMesaji">Yetki kontrol ediliyor...</div>
+      <button id="manuelIndirBtn" class="btn-indir" style="display:none;" onclick="sonFisiTekrarIndir()">📄 Yemek İzin Fişini İndir</button>
       <div class="kapanis-not" id="kapanisBilgi"></div>
       <span class="reset" onclick="numaraSifirla()">Farklı Numara Gir</span>
     </div>
   </div>
+
+  <!-- Gizli Fiş Çizim Alanı -->
+  <canvas id="fisCanvas" width="600" height="760" style="display:none;"></canvas>
 
   <script>
     // GOOGLE APPS SCRIPT LİNKİNİZİ BURAYA YAPIŞTIRIN:
@@ -154,15 +171,18 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const lokasyonAdi = urlParams.get("lokasyon") || "Genel_Lokasyon";
-    document.getElementById("lokasyonBaslik").innerText = lokasyonAdi.replace(/_/g, " ");
+    const temizLokasyon = lokasyonAdi.replace(/_/g, " ");
+    document.getElementById("lokasyonBaslik").innerText = temizLokasyon;
 
-    // Anlık tarih ve saati ekrana yazdır
+    let sonFisVerisi = null;
+
     function anlikTarihYaz() {
       const simdi = new Date();
       const formatli = simdi.toLocaleDateString("tr-TR") + " " + simdi.toLocaleTimeString("tr-TR");
       document.getElementById("tarihSaatAlani").innerText = "📅 " + formatli;
+      return formatli;
     }
-    anlikTarihYaz();
+    let guncelTarih = anlikTarihYaz();
 
     function cihazKimligiGetir() {
       let cid = localStorage.getItem("personel_cihaz_id");
@@ -184,7 +204,7 @@
       
       if (kayitliTel) {
         document.getElementById("otomatikEkran").style.display = "block";
-        document.getElementById("kayitliTelBilgi").innerText = "Personel: " + kayitliTel;
+        document.getElementById("kayitliTelBilgi").innerText = kayitliTel;
 
         if (sayfaYenilendiMi || sessionStorage.getItem("oturum_tamamlandi") === "evet") {
           ekraniKilitle("✓ İşleminiz az önce tamamlandı.", "Bu sayfayı kapatabilirsiniz.");
@@ -209,7 +229,7 @@
       
       document.getElementById("ilkKurulum").style.display = "none";
       document.getElementById("otomatikEkran").style.display = "block";
-      document.getElementById("kayitliTelBilgi").innerText = "Personel: " + standartTel;
+      document.getElementById("kayitliTelBilgi").innerText = standartTel;
       veriyiGonder(standartTel, cihazId);
     }
 
@@ -226,14 +246,34 @@
         clearTimeout(zamanAsimi);
 
         if (data.tarih) {
+          guncelTarih = data.tarih;
           document.getElementById("tarihSaatAlani").innerText = "📅 " + data.tarih;
+        }
+        if (data.adSoyad) {
+          document.getElementById("kayitliAdBilgi").innerText = data.adSoyad;
         }
 
         if (data.durum === "OK") {
           localStorage.setItem("personel_sabit_tel", telefon);
           sessionStorage.setItem("oturum_tamamlandi", "evet");
-          ekraniKilitle("✓ " + data.mesaj, "");
-          onSaniyeGeriSayimVeKapat();
+          
+          sonFisVerisi = {
+            adSoyad: data.adSoyad || "Personel",
+            telefon: telefon,
+            lokasyon: temizLokasyon,
+            tarih: guncelTarih
+          };
+
+          ekraniKilitle("✓ " + data.mesaj, "Yemek İzin Fişi indiriliyor...");
+          document.getElementById("manuelIndirBtn").style.display = "inline-block";
+
+          // Yemek İzin Fişini oluştur ve otomatik indir
+          yemekIzinFisiOlusturVeIndir(sonFisVerisi);
+
+          // İndirme tamamlandıktan sonra 10 saniyelik kapanış sayacını başlat
+          setTimeout(function() {
+            onSaniyeGeriSayimVeKapat();
+          }, 1200);
         } 
         else if (data.durum === "YETKISIZ") {
           localStorage.removeItem("personel_sabit_tel");
@@ -262,7 +302,125 @@
       document.body.appendChild(script);
     }
 
-    // 10 saniye geri sayım yapar ve ardından sekmeyi kapatır
+    // Yemek İzin Fişi PNG Belgesi Oluşturucu
+    function yemekIzinFisiOlusturVeIndir(bilgi) {
+      const canvas = document.getElementById("fisCanvas");
+      const ctx = canvas.getContext("2d");
+
+      // Arka plan (Beyaz kart)
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Dış Çerçeve
+      ctx.strokeStyle = "#1a73e8";
+      ctx.lineWidth = 8;
+      ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+      // Üst Yeşil Onay Şeridi
+      ctx.fillStyle = "#0f9d58";
+      ctx.fillRect(24, 24, canvas.width - 48, 70);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 26px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("✓ ONAYLI YEMEK İZİN FİŞİ", canvas.width / 2, 68);
+
+      const cizimiTamamla = function(logoVarMi, logoImg) {
+        let yPos = 140;
+
+        // Logo varsa çiz
+        if (logoVarMi && logoImg) {
+          const oran = Math.min(180 / logoImg.width, 90 / logoImg.height);
+          const w = logoImg.width * oran;
+          const h = logoImg.height * oran;
+          ctx.drawImage(logoImg, (canvas.width - w) / 2, yPos - 25, w, h);
+          yPos += h + 25;
+        } else {
+          yPos += 15;
+        }
+
+        // AFİYET OLSUN Başlığı
+        ctx.fillStyle = "#d93025";
+        ctx.font = "bold 42px Arial, sans-serif";
+        ctx.fillText("AFİYET OLSUN", canvas.width / 2, yPos);
+        yPos += 45;
+
+        // Ayırıcı Çizgi
+        ctx.strokeStyle = "#dadce0";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(60, yPos);
+        ctx.lineTo(canvas.width - 60, yPos);
+        ctx.stroke();
+        yPos += 50;
+
+        // Personel Ad Soyad
+        ctx.fillStyle = "#5f6368";
+        ctx.font = "bold 20px Arial, sans-serif";
+        ctx.fillText("PERSONEL ADI SOYADI", canvas.width / 2, yPos);
+        yPos += 36;
+        ctx.fillStyle = "#202124";
+        ctx.font = "bold 30px Arial, sans-serif";
+        ctx.fillText(bilgi.adSoyad.toUpperCase(), canvas.width / 2, yPos);
+        yPos += 55;
+
+        // Telefon Numarası
+        ctx.fillStyle = "#5f6368";
+        ctx.font = "bold 20px Arial, sans-serif";
+        ctx.fillText("İLETİŞİM NUMARASI", canvas.width / 2, yPos);
+        yPos += 34;
+        ctx.fillStyle = "#202124";
+        ctx.font = "bold 26px Arial, sans-serif";
+        ctx.fillText(bilgi.telefon, canvas.width / 2, yPos);
+        yPos += 55;
+
+        // Lokasyon
+        ctx.fillStyle = "#5f6368";
+        ctx.font = "bold 20px Arial, sans-serif";
+        ctx.fillText("LOKASYON", canvas.width / 2, yPos);
+        yPos += 34;
+        ctx.fillStyle = "#1a73e8";
+        ctx.font = "bold 26px Arial, sans-serif";
+        ctx.fillText(bilgi.lokasyon, canvas.width / 2, yPos);
+        yPos += 55;
+
+        // Tarih ve Saat
+        ctx.fillStyle = "#5f6368";
+        ctx.font = "bold 20px Arial, sans-serif";
+        ctx.fillText("TARİH VE SAAT", canvas.width / 2, yPos);
+        yPos += 34;
+        ctx.fillStyle = "#202124";
+        ctx.font = "bold 26px Arial, sans-serif";
+        ctx.fillText(bilgi.tarih, canvas.width / 2, yPos);
+
+        // Alt Bilgi Notu
+        ctx.fillStyle = "#80868b";
+        ctx.font = "italic 16px Arial, sans-serif";
+        ctx.fillText("Bu belge tek öğünlük yemek kullanımı için dijital olarak üretilmiştir.", canvas.width / 2, canvas.height - 45);
+
+        // Dosyayı İndir
+        const link = document.createElement("a");
+        const dosyaTarih = bilgi.tarih.replace(/[:.\s]/g, "-");
+        link.download = `Yemek_Izin_Fisi_${dosyaTarih}.png`;
+        link.href = canvas.toDataURL("image/png");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      // Logoyu yüklemeyi dene, varsa fişin üstüne bas
+      const logoImg = new Image();
+      logoImg.crossOrigin = "anonymous";
+      logoImg.onload = function() { cizimiTamamla(true, logoImg); };
+      logoImg.onerror = function() { cizimiTamamla(false, null); };
+      logoImg.src = "EG LOGO.png";
+    }
+
+    function sonFisiTekrarIndir() {
+      if (sonFisVerisi) {
+        yemekIzinFisiOlusturVeIndir(sonFisVerisi);
+      }
+    }
+
     function onSaniyeGeriSayimVeKapat() {
       let kalan = 10;
       const kapanisAlani = document.getElementById("kapanisBilgi");
@@ -276,9 +434,8 @@
           clearInterval(sayac);
           kapanisAlani.innerText = "İşlem tamamlandı. Sekme kapatılıyor...";
           window.close();
-          // Mobil tarayıcı güvenlik gereği sekmeyi kapatmaya izin vermezse ekranı temizle
           setTimeout(function() {
-            document.body.innerHTML = "<div style='font-family:sans-serif;text-align:center;padding:50px;'><h2>✓ İşleminiz Tamamlandı</h2><p>Bu sekmeyi kapatabilirsiniz.</p></div>";
+            document.body.innerHTML = "<div style='font-family:sans-serif;text-align:center;padding:50px;'><h2>✓ Yemek İzin Fişiniz İndirildi</h2><p>Bu sekmeyi güvenle kapatabilirsiniz.</p></div>";
           }, 500);
         }
       }, 1000);
